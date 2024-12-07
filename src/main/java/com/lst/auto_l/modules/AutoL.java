@@ -4,15 +4,17 @@ import today.opai.api.enums.EnumModuleCategory;
 import today.opai.api.features.ExtensionModule;
 import today.opai.api.interfaces.EventHandler;
 import today.opai.api.interfaces.game.entity.LivingEntity;
+import today.opai.api.interfaces.game.entity.Player;
+import today.opai.api.interfaces.game.world.World;
 import today.opai.api.interfaces.modules.special.ModuleKillAura;
 import today.opai.api.interfaces.modules.values.BooleanValue;
+import today.opai.api.interfaces.modules.values.NumberValue;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.time.Instant;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.lst.auto_l.LLL.openAPI;
 
@@ -23,8 +25,8 @@ public class AutoL extends ExtensionModule implements EventHandler {
         // 获取 %appdata% 目录
         String appDataPath = System.getenv("APPDATA");
         if (appDataPath == null) {
-            System.err.println("无法获取 APPDATA 路径");
-            return;
+            System.err.println("[AutoL]Config path not found!!!");
+            throw new RuntimeException("Config path not found");
         }
         // 拼接完整路径
         configPath = appDataPath + File.separator + "Opai" + File.separator + "autoL.txt";
@@ -34,7 +36,7 @@ public class AutoL extends ExtensionModule implements EventHandler {
             while ((line = reader.readLine()) != null) {
                 values.add(line);
             }
-            System.out.println("已加载自定义垃圾话");
+            System.out.println("[AutoL]Config loaded");
         } catch (FileNotFoundException e) {
             values=Arrays.asList("RiseClient-Elevate your Minecraft experience to new heights.",
                     "Dominate the competition with RiseClient,the ultimate Minecraft cheating solution.",
@@ -47,34 +49,76 @@ public class AutoL extends ExtensionModule implements EventHandler {
                     "Adaptable to any Minecraft version from 1.8 to 1.19.4,RiseClient is your go-to client.",
                     "Secure and compliant,RiseClient guarantees 99.9%uptime and supports over 8 languages for a global gaming experience.");
             saveConfig();
-            System.out.println("垃圾话文件未找到,生成中");
+            System.out.println("[AutoL]Config not found");
         }catch (IOException e) {
             e.printStackTrace();
         }
         super.addValues(shout);
         super.addValues(antiSpam);
+        super.addValues(trackTimeout);
+        super.addValues(messageCooldown);
     }
     public List<String> values;
-    private LivingEntity target;
+    private TimerTask task = new TimerTask() {
+        @Override
+        public void run() {
+            targetID=-1;
+            System.out.println("[AutoL]target lost!!!");
+        }
+    };
+    private int targetID=-1;
+    private long messageTimeStamp=0;
+    private String targetName;
     private final BooleanValue shout=openAPI.getValueManager().createBoolean("Shout",false);
     private final BooleanValue antiSpam=openAPI.getValueManager().createBoolean("AntiSpam",true);
+    private final NumberValue trackTimeout=openAPI.getValueManager().createDouble("TrackTimeout",60,10,120,0.1);
+    private final NumberValue messageCooldown=openAPI.getValueManager().createDouble("MessageCooldown",3,0,60,0.1);
     private String configPath;//配置地址
-    public boolean isSent;
+
     @Override
     public void onTick() {
-        ModuleKillAura killAura = (ModuleKillAura) openAPI.getModuleManager().getModule("KillAura");
-        LivingEntity entity=killAura.getTarget();
-        if (entity!=target&&entity!=null) {
-            target = entity;
-            isSent = false;
+        try {
+            ModuleKillAura killAura = (ModuleKillAura) openAPI.getModuleManager().getModule("KillAura");
+            LivingEntity entity=killAura.getTarget();
+            if (!Objects.equals(entity.getEntityId(), targetID)) {
+                targetID = entity.getEntityId();
+                try {
+                    targetName=getPlayerByID(targetID).getName();
+                    System.out.println("[AutoL]tracking "+ entity.getName());
+                }catch (Exception e){
+                    targetID=-1;
+                    System.err.println("[AutoL]Not A Player");
+                }
+            }else{
+                task.cancel();
+                task = new TimerTask() {
+                    @Override
+                    public void run() {
+                        targetID=-1;
+                        System.out.println("[AutoL]target lost!!!");
+                    }
+                };
+                new Timer().schedule(task, (long) (trackTimeout.getValue()*1000));
+            }
+        } catch (Exception e) {
+            //System.out.println("killAura没开呢");
         }
-        if (target.getHealth()==0.0&&!isSent) {
-//            openAPI.printMessage(String.valueOf(target.getName()));
-//            openAPI.printMessage(getRandomElement(Lwords));
+        if (targetID!=-1)try {
+            getPlayerByID(targetID);
+        } catch (NullPointerException e) {
             sentMessage();
-            isSent = true;
+            targetID=-1;
+            task.cancel();
+        } catch (IllegalArgumentException e){
+            System.out.println("[AutoL]NOT A PLAYER");
         }
     }
+
+    @Override
+    public void onLoadWorld() {
+        targetID=-1;
+    }
+
     private static <T> T getRandomElement(List<T> list) {
         if (list == null || list.isEmpty()) {
             return null; // 如果列表为空，返回null
@@ -92,11 +136,16 @@ public class AutoL extends ExtensionModule implements EventHandler {
         }
     }
     private void sentMessage() {
+        if(Instant.now().getEpochSecond()-messageTimeStamp<messageCooldown.getValue()){
+            openAPI.printMessage("[AutoL]Message could not be sent because the interval was too short.");
+            return;
+        }
         String message="";
         if (shout.getValue())message+="/shout ";
-        message+=getRandomElement(values).replaceAll("\\{player}", target.getName());
+        message+=getRandomElement(values).replaceAll("\\{player}", targetName);
         if (antiSpam.getValue())message+=" "+generateRandomString(5);
         openAPI.getLocalPlayer().sendChatMessage(message);
+        messageTimeStamp= Instant.now().getEpochSecond();
     }
 
     private static String generateRandomString(int length) {
@@ -110,6 +159,16 @@ public class AutoL extends ExtensionModule implements EventHandler {
         }
 
         return stringBuilder.toString();
+    }
+    private static Player getPlayerByID(int id) {
+        AtomicReference<Player> output = new AtomicReference<>();
+        openAPI.getWorld().getLoadedPlayerEntities().forEach(player -> {
+            if (player.getEntityId() == id) {
+                output.set(player);
+            }
+        });
+        if (output.get() == null) {throw new NullPointerException("player not found");}
+        return output.get();
     }
 
 }

@@ -6,7 +6,7 @@ import today.opai.api.OpenAPI;
 import today.opai.api.annotations.ExtensionInfo;
 
 // Required @ExtensionInfo annotation
-@ExtensionInfo(name = "AutoL",author = "lesetong",version = "1.0")
+@ExtensionInfo(name = "AutoL",author = "lesetong",version = "1.1")
 public class LLL extends Extension {
     public static OpenAPI openAPI;
 
