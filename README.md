@@ -1,12 +1,31 @@
-# Extension Example
+# AutoL
 
-A example extension implementation with [opensource-components](https://github.com/opai-client/opensource-components)
+A extension that sends L-words when killing a player
 
 **Features**
-- **.binds**: show a bind list
-- **AutoWool**: automatically buy wool when you don't have enough
-- **CustomScoreboard**: a custom scoreboard widget
+- **AutoL**: send L-words when killing a player
+- **Customizable L-words**: u can customize ur own L-words in `%AppData%\Opai\autoL.txt`
+- **Shout** shut ur L-words!!!
+- **AntiSpam** make sure your messages are not marked as spam
+
+## Configuration File Format
+
+- File path: `%AppData%\Opai\autoL.txt`
+- Each line represents an independent sentence.
+- In each line, `{player}` will be replaced with the real player's name.
+- To restore the default settings, simply delete the `autoL.txt` file.
+
+### Example
+
+Suppose your `autoL.txt` file contains the following:
+``
+一破，卧龙出山！{player}已被opai击败
+get opai at opai.today!
+警察正在处理。你们开挂的一个都别想跑。都进去做大牢吧。
+我有这个端的src。
+你这个cps像ac。瞄准也像自瞄，别再开挂了知道吗？
+``
 
 ## Screenshots
 
-![1](https://i.imgur.com/AvaprIf.png)
+![1]()
