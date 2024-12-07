@@ -18,14 +18,15 @@ A extension that sends L-words when killing a player
 ### Example
 
 Suppose your `autoL.txt` file contains the following:
-``
+``` txt
 一破，卧龙出山！{player}已被opai击败
 get opai at opai.today!
 警察正在处理。你们开挂的一个都别想跑。都进去做大牢吧。
 我有这个端的src。
 你这个cps像ac。瞄准也像自瞄，别再开挂了知道吗？
-``
+```
 
 ## Screenshots
 
-![1]()
+![in game](https://github.com/Dustbin-lst/auto-L/blob/master/screenshots/autoL1.png?raw=true)
+![options](https://github.com/Dustbin-lst/auto-L/blob/master/screenshots/autoLoptions.png?raw=true)
